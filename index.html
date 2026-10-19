@@ -251,9 +251,17 @@ $('make').addEventListener('click', async ()=>{
     const buf = await buildXlsx();
     const blob = new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const fn = '稟議書_'+$('date').value.replace(/-/g,'')+'_'+safe($('name').value)+'_'+safe($('item').value)+'.xlsx';
-    const dl = await (window.claude && claude.use ? claude.use('downloads') : null);
-    if(!dl){ showMsg('この表示環境ではファイルを保存できません。claude.aiのアプリまたはブラウザでこのページを開いてください。','ng'); return; }
-    await dl.save({filename:fn, data:blob});
+    let dl = null;
+    try{ dl = await (window.claude && claude.use ? claude.use('downloads') : null); }catch(e){ dl = null; }
+    if(dl){
+      await dl.save({filename:fn, data:blob});
+    }else{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fn; a.style.display = 'none';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 15000);
+    }
     showMsg('Excelを保存しました。開いて印刷してください（A4縦・1枚）。承認欄は印刷後に押印・記入します。','ok');
   }catch(e){
     if(e && e.code==='declined'){ showMsg('保存をキャンセルしました。','ng'); }
